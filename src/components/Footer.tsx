@@ -1,7 +1,29 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { supabase } from '../supabaseClient';
+import type { Category } from '../data/dbTypes';
 
 export const Footer: React.FC = () => {
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    const fetchTopCategories = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('categories')
+          .select('*')
+          .order('priority', { ascending: true })
+          .limit(4);
+        if (!error && data && data.length > 0) {
+          setCategories(data);
+        }
+      } catch (err) {
+        console.error('Error fetching categories for footer:', err);
+      }
+    };
+    fetchTopCategories();
+  }, []);
+
   return (
     <footer>
       <div className="container">
@@ -24,10 +46,20 @@ export const Footer: React.FC = () => {
           <div className="footer-col">
             <h5>Products</h5>
             <ul>
-              <li><Link to="/products?category=pressure-fryer">Pressure Fryers</Link></li>
-              <li><Link to="/products?category=open-fryer">Open / Rack Fryers</Link></li>
-              <li><Link to="/products?category=massage-tumblers">Vacuum Tumblers</Link></li>
-              <li><Link to="/products?category=others">Other Equipment</Link></li>
+              {categories.length > 0 ? (
+                categories.map(cat => (
+                  <li key={cat.id}>
+                    <Link to={`/products?category=${cat.id}`}>{cat.name}</Link>
+                  </li>
+                ))
+              ) : (
+                <>
+                  <li><Link to="/products?category=pressure-fryer">Pressure Fryers</Link></li>
+                  <li><Link to="/products?category=open-fryer">Open / Rack Fryers</Link></li>
+                  <li><Link to="/products?category=massage-tumblers">Vacuum Tumblers</Link></li>
+                  <li><Link to="/products?category=others">Other Equipment</Link></li>
+                </>
+              )}
             </ul>
           </div>
           <div className="footer-col">
