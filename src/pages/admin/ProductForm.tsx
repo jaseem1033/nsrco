@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
+import type { Category } from '../../data/dbTypes';
 
 interface SpecRow {
   key: string;
@@ -15,13 +16,17 @@ export const ProductForm: React.FC = () => {
   // Form Fields State
   const [productId, setProductId] = useState('');
   const [name, setName] = useState('');
-  const [category, setCategory] = useState('pressure-fryer');
+  const [category, setCategory] = useState('');
   const [priority, setPriority] = useState(10);
   const [description, setDescription] = useState('');
   const [image, setImage] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [features, setFeatures] = useState<string[]>(['']);
   const [specs, setSpecs] = useState<SpecRow[]>([{ key: '', value: '' }]);
+
+  // Dynamic Categories State
+  const [categories, setCategories] = useState<Category[]>([]);
+
 
   // UI States
   const [loading, setLoading] = useState(false);
@@ -41,49 +46,62 @@ export const ProductForm: React.FC = () => {
     }
   }, [name, isEditMode]);
 
+
+
   useEffect(() => {
-    const fetchProductDetails = async () => {
-      if (!id) return;
+    const loadCategoriesAndProduct = async () => {
       try {
-        const { data, error } = await supabase
-          .from('products')
+        // 1. Fetch categories
+        const { data: catData, error: catError } = await supabase
+          .from('categories')
           .select('*')
-          .eq('id', id)
-          .single();
+          .order('name', { ascending: true });
 
-        if (error) throw error;
+        if (catError) throw catError;
+        setCategories(catData || []);
 
-        if (data) {
-          setProductId(data.id);
-          setName(data.name || '');
-          setCategory(data.category || 'pressure-fryer');
-          setPriority(data.priority ?? 10);
-          setDescription(data.description || '');
-          setImage(data.image || '');
-          setImages(data.images || []);
-          setFeatures(data.features && data.features.length > 0 ? data.features : ['']);
-          
-          // Map specs Record<string, string> to SpecRow[] array
-          if (data.specs && typeof data.specs === 'object') {
-            const mappedSpecs = Object.entries(data.specs).map(([k, v]) => ({
-              key: k,
-              value: String(v)
-            }));
-            setSpecs(mappedSpecs.length > 0 ? mappedSpecs : [{ key: '', value: '' }]);
-          } else {
-            setSpecs([{ key: '', value: '' }]);
+        // 2. Fetch product if in Edit Mode
+        if (isEditMode && id) {
+          const { data: productData, error: prodError } = await supabase
+            .from('products')
+            .select('*')
+            .eq('id', id)
+            .single();
+
+          if (prodError) throw prodError;
+
+          if (productData) {
+            setProductId(productData.id);
+            setName(productData.name || '');
+            setCategory(productData.category || '');
+            setPriority(productData.priority ?? 10);
+            setDescription(productData.description || '');
+            setImage(productData.image || '');
+            setImages(productData.images || []);
+            setFeatures(productData.features && productData.features.length > 0 ? productData.features : ['']);
+            
+            // Map specs Record<string, string> to SpecRow[] array
+            if (productData.specs && typeof productData.specs === 'object') {
+              const mappedSpecs = Object.entries(productData.specs).map(([k, v]) => ({
+                key: k,
+                value: String(v)
+              }));
+              setSpecs(mappedSpecs.length > 0 ? mappedSpecs : [{ key: '', value: '' }]);
+            } else {
+              setSpecs([{ key: '', value: '' }]);
+            }
           }
+        } else if (catData && catData.length > 0) {
+          setCategory(catData[0].id);
         }
       } catch (err: any) {
-        setErrorMsg(err.message || 'Failed to fetch product details.');
+        setErrorMsg(err.message || 'Failed to initialize form data.');
       } finally {
         setFetchLoading(false);
       }
     };
 
-    if (isEditMode) {
-      fetchProductDetails();
-    }
+    loadCategoriesAndProduct();
   }, [id, isEditMode]);
 
   // Image Upload Handler
@@ -181,6 +199,8 @@ export const ProductForm: React.FC = () => {
       setSpecs(specs.filter((_, i) => i !== index));
     }
   };
+
+
 
   // Submit Handler
   const handleSubmit = async (e: React.FormEvent) => {
@@ -325,10 +345,11 @@ export const ProductForm: React.FC = () => {
                 onChange={(e) => setCategory(e.target.value)}
                 disabled={loading}
               >
-                <option value="pressure-fryer">Pressure Fryers</option>
-                <option value="open-fryer">Open / Rack Fryers</option>
-                <option value="massage-tumblers">Vacuum Tumblers</option>
-                <option value="others">Other Equipment</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.name}
+                  </option>
+                ))}
               </select>
             </div>
 
@@ -344,6 +365,8 @@ export const ProductForm: React.FC = () => {
                 disabled={loading}
               />
             </div>
+
+
           </div>
 
           <div className="admin-form-group">

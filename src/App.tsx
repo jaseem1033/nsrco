@@ -24,6 +24,12 @@ const AdminDashboard = React.lazy(() =>
 const ProductForm = React.lazy(() =>
   import('./pages/admin/ProductForm').then((module) => ({ default: module.ProductForm }))
 );
+const FeaturedProductForm = React.lazy(() =>
+  import('./pages/admin/FeaturedProductForm').then((module) => ({ default: module.FeaturedProductForm }))
+);
+const CategoryForm = React.lazy(() =>
+  import('./pages/admin/CategoryForm').then((module) => ({ default: module.CategoryForm }))
+);
 
 const AppContent: React.FC = () => {
   const location = useLocation();
@@ -99,6 +105,38 @@ const AppContent: React.FC = () => {
             element={
               <ProtectedRoute>
                 <ProductForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/featured/new"
+            element={
+              <ProtectedRoute>
+                <FeaturedProductForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/featured/edit/:id"
+            element={
+              <ProtectedRoute>
+                <FeaturedProductForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/categories/new"
+            element={
+              <ProtectedRoute>
+                <CategoryForm />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/categories/edit/:id"
+            element={
+              <ProtectedRoute>
+                <CategoryForm />
               </ProtectedRoute>
             }
           />

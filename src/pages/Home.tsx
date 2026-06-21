@@ -1,8 +1,83 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { StatsCounter } from '../components/StatsCounter';
+import { supabase } from '../supabaseClient';
+import type { FeaturedProduct, Category } from '../data/dbTypes';
 
 export const Home: React.FC = () => {
+  const [featuredProducts, setFeaturedProducts] = useState<FeaturedProduct[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [heroImage, setHeroImage] = useState('/images/nsrco-hero.webp');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchHomeData = async () => {
+      setLoading(true);
+      try {
+        // Fetch featured banners
+        const { data: featuredData, error: featuredError } = await supabase
+          .from('featured_products')
+          .select('*')
+          .order('priority', { ascending: true });
+
+        if (featuredError) throw featuredError;
+        setFeaturedProducts(featuredData || []);
+
+        // Fetch categories for homepage browse section
+        const { data: categoriesData, error: categoriesError } = await supabase
+          .from('categories')
+          .select('*')
+          .eq('show_on_homepage', true);
+
+        if (!categoriesError && categoriesData) {
+          setCategories(categoriesData);
+        }
+
+        // Fetch site hero image settings
+        const { data: settingsData, error: settingsError } = await supabase
+          .from('homepage_settings')
+          .select('*');
+
+        if (!settingsError && settingsData) {
+          const heroSetting = settingsData.find(item => item.key === 'hero_image');
+          if (heroSetting && heroSetting.value) {
+            setHeroImage(heroSetting.value);
+          }
+        }
+      } catch (err: any) {
+        console.error('Error fetching home page data:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchHomeData();
+  }, []);
+
+  useEffect(() => {
+    if (!loading) {
+      const timer = setTimeout(() => {
+        const observer = new IntersectionObserver(
+          (entries) => {
+            entries.forEach((entry) => {
+              if (entry.isIntersecting) {
+                entry.target.classList.add('visible');
+                observer.unobserve(entry.target);
+              }
+            });
+          },
+          { threshold: 0.15 }
+        );
+
+        document.querySelectorAll('.fade-up').forEach((el) => {
+          observer.observe(el);
+        });
+
+        return () => observer.disconnect();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
   return (
     <main>
       {/* Hero Section */}
@@ -26,7 +101,7 @@ export const Home: React.FC = () => {
           </div>
         </div>
         <div className="hero-right">
-          <img src="/images/nsrco-hero.webp" alt="Commercial kitchen layout with premium gear" />
+          <img src={heroImage} alt="Commercial kitchen layout with premium gear" />
         </div>
         <a href="#about" className="hero-scroll">Scroll to explore</a>
       </section>
@@ -127,85 +202,44 @@ export const Home: React.FC = () => {
             </p>
           </div>
 
-          {/* Product 1: High-capacity Rack Fryer */}
-          <div className="featured-product-layout fade-up">
-            <div className="fp-img">
-              <img src="/images/rack-fryer.webp" alt="High-capacity Rack Fryer system" />
+          {/* Dynamic Featured Products List */}
+          {loading ? (
+            <div className="text-center py-5">
+              <div className="admin-spinner" style={{ width: '32px', height: '32px' }}></div>
+              <p style={{ marginTop: '0.8rem', color: 'var(--text-muted)', fontSize: '0.9rem' }}>Loading featured systems...</p>
             </div>
-            <div className="fp-body">
-              <div className="eyebrow">
-                <span></span> Rack Fryer
+          ) : featuredProducts.length === 0 ? (
+            <div className="text-center py-5" style={{ border: '1px dashed var(--border)', borderRadius: '8px', background: 'rgba(255,255,255,0.01)', opacity: 0.7 }}>
+              <p style={{ color: 'var(--text-muted)' }}>No featured products selected. Create banners inside the Admin Dashboard.</p>
+            </div>
+          ) : (
+            featuredProducts.map(p => (
+              <div className="featured-product-layout fade-up" key={p.id}>
+                <div className="fp-img">
+                  <img src={p.image} alt={p.title} loading="lazy" />
+                </div>
+                <div className="fp-body">
+                  <div className="eyebrow">
+                    <span></span> Featured Equipment
+                  </div>
+                  <h3>{p.title}</h3>
+                  <p>{p.description}</p>
+                  {p.features && p.features.length > 0 && (
+                    <ul className="fp-features">
+                      {p.features.slice(0, 4).map((f, i) => (
+                        <li key={i}>{f}</li>
+                      ))}
+                    </ul>
+                  )}
+                  {p.product_id ? (
+                    <Link to={`/products/${p.product_id}`} className="btn-primary" style={{ alignSelf: 'flex-start' }}>Explore Product</Link>
+                  ) : (
+                    <Link to="/products" className="btn-primary" style={{ alignSelf: 'flex-start' }}>View Catalog</Link>
+                  )}
+                </div>
               </div>
-              <h3>High-capacity Rack Fryer</h3>
-              <p>Built for the most demanding commercial kitchens. Features advanced thermal management for rapid recovery and uniform results.</p>
-              <ul className="fp-features">
-                <li>High Volume – 6-head chicken or 6.5 kg per load</li>
-                <li>Fast Recovery – High-efficiency heating elements in electric and gas units</li>
-                <li>Easy Lift – Counter-balance racking system for handling full loads</li>
-              </ul>
-              <Link to="/products/of-100" className="btn-primary" style={{ alignSelf: 'flex-start' }}>Explore Product</Link>
-            </div>
-          </div>
-
-          {/* Product 2: Electric Pressure Fryer (24L) */}
-          <div className="featured-product-layout fade-up">
-            <div className="fp-img">
-              <img src="/images/pressure-fryer(2).webp" alt="Electric Pressure Fryer (24L)" />
-            </div>
-            <div className="fp-body">
-              <div className="eyebrow">
-                <span></span> Pressure Fryer
-              </div>
-              <h3>Electric Pressure Fryer (24L)</h3>
-              <p>High-performance fryer with 24-liter oil capacity. Available in electric or gas models for versatile kitchen integration.</p>
-              <ul className="fp-features">
-                <li>Faster Cooking - Seals in flavor while reducing cooking time and temperature</li>
-                <li>Pressure Assist - Cook smaller batches on demand with consistent quality</li>
-                <li>Energy Efficient - Fast temperature recovery between batches</li>
-              </ul>
-              <Link to="/products/nsrco-pf-1800-hp" className="btn-primary" style={{ alignSelf: 'flex-start' }}>Explore Product</Link>
-            </div>
-          </div>
-
-          {/* Product 3: High-volume pressure fryer (21L) */}
-          <div className="featured-product-layout fade-up">
-            <div className="fp-img">
-              <img src="/images/broaster-1800.webp" alt="High-volume pressure fryer (21L)" />
-            </div>
-            <div className="fp-body">
-              <div className="eyebrow">
-                <span></span> Pressure Fryer
-              </div>
-              <h3>High-volume pressure fryer (21L)</h3>
-              <p>Precision-engineered for high-output environments. Round cooking well design ensures maximum flavor retention and consistency.</p>
-              <ul className="fp-features">
-                <li>Fast throughput: 40 pieces/load</li>
-                <li>Pressure-activated cover locking for safety</li>
-                <li>Single-action closing and opening mechanism</li>
-              </ul>
-              <Link to="/products/nsrco-pf-1800" className="btn-primary" style={{ alignSelf: 'flex-start' }}>Explore Product</Link>
-            </div>
-          </div>
-
-          {/* Product 4: N-VM250 Vacuum Tumbler */}
-          <div className="featured-product-layout fade-up">
-            <div className="fp-img">
-              <img src="/images/mixer.webp" alt="N-VM250 Vacuum Tumbler" />
-            </div>
-            <div className="fp-body">
-              <div className="eyebrow">
-                <span></span> Vacuum Tumbler
-              </div>
-              <h3>N-VM250 Vacuum Tumbler</h3>
-              <p>Industrial grade stainless steel construction. Optimized for high yield, tenderness, and accelerated marination processes.</p>
-              <ul className="fp-features">
-                <li>Complete stainless steel structure for maximum durability</li>
-                <li>Hygienic design, extremely easy to clean</li>
-                <li>Fully adjustable vacuum, exhaust pressure and total time settings</li>
-              </ul>
-              <Link to="/products/massage-tumbler-1" className="btn-primary" style={{ alignSelf: 'flex-start' }}>Explore Product</Link>
-            </div>
-          </div>
+            ))
+          )}
         </div>
       </section>
 
@@ -323,77 +357,36 @@ export const Home: React.FC = () => {
           </div>
 
           <div className="category-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '2rem' }}>
-            {/* Card 1 */}
-            <Link className="product-card" to="/products?category=pressure-fryer">
-              <div className="product-card-img" style={{ aspectRatio: '1/1' }}>
-                <img src="/images/pressure-fryer.webp" alt="Pressure Fryer" loading="lazy" />
+            {categories.length === 0 ? (
+              <div className="col-12 text-center text-white py-4" style={{ gridColumn: '1 / -1', opacity: 0.7 }}>
+                <p>No categories visible on homepage. Configure categories in the Admin Dashboard.</p>
               </div>
-              <div className="product-card-body">
-                <div className="product-card-cat">Category</div>
-                <div className="product-card-name">Pressure Fryers</div>
-                <div className="product-card-desc">High-efficiency pressure fryers for faster cooking and juicier results.</div>
-              </div>
-              <div className="product-card-arrow" aria-hidden="true">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                  <polyline points="12 5 19 12 12 19"></polyline>
-                </svg>
-              </div>
-            </Link>
-            
-            {/* Card 2 */}
-            <Link className="product-card" to="/products?category=open-fryer">
-              <div className="product-card-img" style={{ aspectRatio: '1/1' }}>
-                <img src="/images/open-fryer.webp" alt="Open Fryer" loading="lazy" />
-              </div>
-              <div className="product-card-body">
-                <div className="product-card-cat">Category</div>
-                <div className="product-card-name">Open Fryers</div>
-                <div className="product-card-desc">Versatile open fryers perfect for high-volume frying needs.</div>
-              </div>
-              <div className="product-card-arrow" aria-hidden="true">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                  <polyline points="12 5 19 12 12 19"></polyline>
-                </svg>
-              </div>
-            </Link>
-
-            {/* Card 3 */}
-            <Link className="product-card" to="/products?category=massage-tumblers">
-              <div className="product-card-img" style={{ aspectRatio: '1/1' }}>
-                <img src="/images/marinate-vacum-tumbler.webp" alt="Vacuum Massage Tumblers" loading="lazy" />
-              </div>
-              <div className="product-card-body">
-                <div className="product-card-cat">Category</div>
-                <div className="product-card-name">Vacuum Massage Tumblers</div>
-                <div className="product-card-desc">Stainless-steel vacuum tumbler for fast, hygienic marination.</div>
-              </div>
-              <div className="product-card-arrow" aria-hidden="true">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                  <polyline points="12 5 19 12 12 19"></polyline>
-                </svg>
-              </div>
-            </Link>
-
-            {/* Card 4 */}
-            <Link className="product-card" to="/products?category=others">
-              <div className="product-card-img" style={{ aspectRatio: '1/1' }}>
-                <img src="/images/others.webp" alt="Other Kitchen Equipments" loading="lazy" />
-              </div>
-              <div className="product-card-body">
-                <div className="product-card-cat">Category</div>
-                <div className="product-card-name">Other Kitchen Equipments</div>
-                <div className="product-card-desc">Holding cabinets and custom hardware designed to support kitchen turnover.</div>
-              </div>
-              <div className="product-card-arrow" aria-hidden="true">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                  <line x1="5" y1="12" x2="19" y2="12"></line>
-                  <polyline points="12 5 19 12 12 19"></polyline>
-                </svg>
-              </div>
-            </Link>
+            ) : (
+              categories.map(cat => (
+                <Link className="product-card" to={`/products?category=${cat.id}`} key={cat.id}>
+                  <div className="product-card-img" style={{ aspectRatio: '1/1' }}>
+                    <img 
+                      src={cat.image || 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?q=80&w=200&auto=format&fit=crop'} 
+                      alt={cat.name} 
+                      loading="lazy" 
+                    />
+                  </div>
+                  <div className="product-card-body">
+                    <div className="product-card-cat">Category</div>
+                    <div className="product-card-name">{cat.name}</div>
+                    <div className="product-card-desc">
+                      {cat.description || 'Explore our custom engineering hardware.'}
+                    </div>
+                  </div>
+                  <div className="product-card-arrow" aria-hidden="true">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="5" y1="12" x2="19" y2="12"></line>
+                      <polyline points="12 5 19 12 12 19"></polyline>
+                    </svg>
+                  </div>
+                </Link>
+              ))
+            )}
           </div>
         </div>
       </section>

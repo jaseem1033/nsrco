@@ -2,35 +2,48 @@ import React, { useEffect, useState } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { supabase } from '../supabaseClient';
 import type { Product } from '../data/products';
+import type { Category } from '../data/dbTypes';
 
 export const Products: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const activeCategory = searchParams.get('category') || 'all';
 
   const [products, setProducts] = useState<Product[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
-  // Category label mappings
-  const catLabels: Record<string, string> = {
-    'pressure-fryer': 'Pressure Fryer',
-    'open-fryer': 'Open / Rack Fryer',
-    'massage-tumblers': 'Vacuum Tumbler',
-    'others': 'Other Equipment'
-  };
+  // Construct dynamic category labels mappings
+  const catLabels = React.useMemo(() => {
+    const labels: Record<string, string> = {};
+    categories.forEach(cat => {
+      labels[cat.id] = cat.name;
+    });
+    return labels;
+  }, [categories]);
 
   useEffect(() => {
-    const fetchCatalog = async () => {
+    const fetchCatalogAndCategories = async () => {
       setLoading(true);
       setErrorMsg(null);
       try {
-        const { data, error } = await supabase
+        // 1. Fetch categories
+        const { data: catData, error: catError } = await supabase
+          .from('categories')
+          .select('*')
+          .order('name', { ascending: true });
+
+        if (catError) throw catError;
+        setCategories(catData || []);
+
+        // 2. Fetch products
+        const { data: prodData, error: prodError } = await supabase
           .from('products')
           .select('*')
           .order('priority', { ascending: true });
 
-        if (error) throw error;
-        setProducts(data || []);
+        if (prodError) throw prodError;
+        setProducts(prodData || []);
       } catch (err: any) {
         setErrorMsg(err.message || 'Failed to retrieve products. Please check connection.');
       } finally {
@@ -38,7 +51,7 @@ export const Products: React.FC = () => {
       }
     };
 
-    fetchCatalog();
+    fetchCatalogAndCategories();
   }, []);
 
   const handleTabClick = (category: string) => {
@@ -75,37 +88,22 @@ export const Products: React.FC = () => {
         <div className="container">
           
           {/* Tab navigation */}
-          <div className="category-tabs fade-up" style={{ justifyContent: 'center' }}>
+          <div className="category-tabs fade-up" style={{ justifyContent: 'center', flexWrap: 'wrap', gap: '10px' }}>
             <button
               className={`cat-tab ${activeCategory === 'all' ? 'active' : ''}`}
               onClick={() => handleTabClick('all')}
             >
               All
             </button>
-            <button
-              className={`cat-tab ${activeCategory === 'pressure-fryer' ? 'active' : ''}`}
-              onClick={() => handleTabClick('pressure-fryer')}
-            >
-              Pressure Fryers
-            </button>
-            <button
-              className={`cat-tab ${activeCategory === 'open-fryer' ? 'active' : ''}`}
-              onClick={() => handleTabClick('open-fryer')}
-            >
-              Open / Rack Fryers
-            </button>
-            <button
-              className={`cat-tab ${activeCategory === 'massage-tumblers' ? 'active' : ''}`}
-              onClick={() => handleTabClick('massage-tumblers')}
-            >
-              Vacuum Tumblers
-            </button>
-            <button
-              className={`cat-tab ${activeCategory === 'others' ? 'active' : ''}`}
-              onClick={() => handleTabClick('others')}
-            >
-              Others
-            </button>
+            {categories.map(cat => (
+              <button
+                key={cat.id}
+                className={`cat-tab ${activeCategory === cat.id ? 'active' : ''}`}
+                onClick={() => handleTabClick(cat.id)}
+              >
+                {cat.name}
+              </button>
+            ))}
           </div>
 
           {/* Dynamic Grid */}
