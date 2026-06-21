@@ -1,21 +1,36 @@
-// Centralized product data for dynamic rendering
+export interface Product {
+  id: string;
+  name: string;
+  category: string;
+  priority: number;
+  image: string;
+  images: string[];
+  description: string;
+  features: string[];
+  specs: Record<string, string>;
+}
 
-const categories = [
+export interface Category {
+  id: string;
+  name: string;
+}
+
+export const categories: Category[] = [
   { id: "pressure-fryer", name: "Pressure Fryers" },
   { id: "open-fryer", name: "Open Fryers" },
   { id: "combi-oven", name: "Combi Ovens" },
   { id: "holding-equipment", name: "Holding Equipment" }
 ];
 
-const productsData = [
+export const productsData: Product[] = [
   // --- Pressure Fryers (2 items) ---
   {
     id: "nsrco-pf-1800",
     name: "NSRCO Pressure Fryer 1800",
     category: "pressure-fryer",
     priority: 1,
-    image: "../images/nsrco-pf-1800.webp",
-    images: ["../images/nsrco-pf-1800.webp", "../images/nsrco-pf-1800.webp", "../images/nsrco-pf-1800.webp"],
+    image: "/images/nsrco-pf-1800.webp",
+    images: ["/images/nsrco-pf-1800.webp", "/images/nsrco-pf-1800.webp", "/images/nsrco-pf-1800.webp"],
     description: "Round cooking well with 21 liter cooking oil capacity operates between 12-14 psi gauge pressure at temperatures up to 375°F.",
     features: [
       "Fast and productive – specifically designed for high volume production, cooks up to 40 pieces of fresh bone-in chicken per load in as little as 10 minutes*.",
@@ -30,8 +45,8 @@ const productsData = [
     name: "NSRCO Pressure Fryer HP",
     category: "pressure-fryer",
     priority: 2,
-    image: "../images/pressure-fryer.webp",
-    images: ["../images/pressure-fryer.webp", "../images/pressure-fryer.webp", "../images/pressure-fryer.webp"],
+    image: "/images/pressure-fryer.webp",
+    images: ["/images/pressure-fryer.webp", "/images/pressure-fryer.webp", "/images/pressure-fryer.webp"],
     description: "High-performance fryer designed for safety, efficiency, and space savings, featuring a pressure-sealed lid, advanced heating systems, onboard filtration, and durable stainless-steel construction.",
     features: [
       "Frying under pressure seals in flavor, reduces cook time and temperature.",
@@ -48,8 +63,8 @@ const productsData = [
     name: "Rack Fryer",
     category: "open-fryer",
     priority: 5,
-    image: "../images/open-fryer.webp",
-    images: ["../images/open-fryer.webp", "../images/open-fryer.webp", "../images/open-fryer.webp"],
+    image: "/images/open-fryer.webp",
+    images: ["/images/open-fryer.webp", "/images/open-fryer.webp", "/images/open-fryer.webp"],
     description: "Reliable open fryer for general purpose commercial high-volume frying needs.",
     features: [
       "Holds 6-head chicken or (6.5 kg) of food per load.",
@@ -66,8 +81,8 @@ const productsData = [
     name: "Open Fryer NF1",
     category: "open-fryer",
     priority: 6,
-    image: "../images/open-fryer-bras-nf1.webp",
-    images: ["../images/open-fryer-bras-nf1.webp", "../images/open-fryer-bras-nf1.webp", "../images/open-fryer-bras-nf1.webp"],
+    image: "/images/open-fryer-bras-nf1.webp",
+    images: ["/images/open-fryer-bras-nf1.webp", "/images/open-fryer-bras-nf1.webp", "/images/open-fryer-bras-nf1.webp"],
     description: "Reliable open fryer for general purpose commercial frying needs with high efficiency.",
     features: [
       "Cooks 4-head chicken or (4.25 kg) of food per load.",
@@ -81,8 +96,8 @@ const productsData = [
     name: "Open Fryer NF2",
     category: "open-fryer",
     priority: 7,
-    image: "../images/open-fryer-bras-nf2.webp",
-    images: ["../images/open-fryer-bras-nf2.webp", "../images/open-fryer-bras-nf2.webp", "../images/open-fryer-bras-nf2.webp"],
+    image: "/images/open-fryer-bras-nf2.webp",
+    images: ["/images/open-fryer-bras-nf2.webp", "/images/open-fryer-bras-nf2.webp", "/images/open-fryer-bras-nf2.webp"],
     description: "Reliable open fryer for general purpose commercial frying needs, engineered for power savings.",
     features: [
       "Cooks 4-head chicken or (4.25 kg) of food per load.",
@@ -98,8 +113,8 @@ const productsData = [
     name: "Vacuum Massage Tumblers Machine",
     category: "massage-tumblers",
     priority: 9,
-    image: "../images/marinate-vacum-tumbler.webp",
-    images: ["../images/marinate-vacum-tumbler.webp", "../images/marinate-vacum-tumbler.webp", "../images/marinate-vacum-tumbler.webp"],
+    image: "/images/marinate-vacum-tumbler.webp",
+    images: ["/images/marinate-vacum-tumbler.webp", "/images/marinate-vacum-tumbler.webp", "/images/marinate-vacum-tumbler.webp"],
     description: "Vacuum Massage Tumblers Machine from NSRCO Machinery is made of stainless steel. This machine is for shortening pickling time while upgrading product freshness, increasing water content in pickles, maintaining tenderness and then improving product quality.",
     features: [
       "Complete stainless steel structure for maximum durability and sanitization.",
@@ -116,8 +131,8 @@ const productsData = [
     name: "Holding Cabinet HE-100",
     category: "others",
     priority: 13,
-    image: "../images/holding-equipment.webp",
-    images: ["../images/holding-equipment.webp", "../images/holding-equipment.webp", "../images/holding-equipment.webp"],
+    image: "/images/holding-equipment.webp",
+    images: ["/images/holding-equipment.webp", "/images/holding-equipment.webp", "/images/holding-equipment.webp"],
     description: "Under-counter holding cabinet to keep food hot at point of service.",
     features: [
       "Adjustable humidity to prevent food drying.",
