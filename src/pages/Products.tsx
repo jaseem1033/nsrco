@@ -31,7 +31,7 @@ export const Products: React.FC = () => {
         const { data: catData, error: catError } = await supabase
           .from('categories')
           .select('*')
-          .order('name', { ascending: true });
+          .order('priority', { ascending: true });
 
         if (catError) throw catError;
         setCategories(catData || []);

@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { SuccessModal } from '../components/SuccessModal';
+import { supabase } from '../supabaseClient';
+import type { Category } from '../data/dbTypes';
 
 export const Contact: React.FC = () => {
   const [formData, setFormData] = useState({
@@ -11,6 +13,18 @@ export const Contact: React.FC = () => {
   });
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [submittedName, setSubmittedName] = useState('');
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  useEffect(() => {
+    const fetchCategories = async () => {
+      const { data } = await supabase
+        .from('categories')
+        .select('*')
+        .order('priority', { ascending: true });
+      if (data) setCategories(data);
+    };
+    fetchCategories();
+  }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
     const { id, value } = e.target;
@@ -152,9 +166,9 @@ export const Contact: React.FC = () => {
                     required
                   >
                     <option value="" disabled hidden></option>
-                    <option value="Pressure Fryer">Pressure Fryer</option>
-                    <option value="Open / Rack Fryer">Open / Rack Fryer</option>
-                    <option value="Vacuum Tumbler">Vacuum Tumbler</option>
+                    {categories.map(cat => (
+                      <option key={cat.id} value={cat.name}>{cat.name}</option>
+                    ))}
                     <option value="Full Kitchen Setup">Full Kitchen Setup</option>
                     <option value="Maintenance & Service">Maintenance & Service</option>
                     <option value="Other">Other Inquiry</option>

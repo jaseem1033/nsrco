@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../../supabaseClient';
 import type { FeaturedProduct, Category } from '../../data/dbTypes';
 
@@ -12,7 +12,11 @@ interface ProductRow {
 }
 
 export const AdminDashboard: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<'catalog' | 'banners' | 'categories' | 'settings'>('catalog');
+  const [searchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState<'catalog' | 'banners' | 'categories' | 'settings'>(
+    (tabParam === 'banners' || tabParam === 'categories' || tabParam === 'settings') ? tabParam : 'catalog'
+  );
 
   // Lists State
   const [products, setProducts] = useState<ProductRow[]>([]);
@@ -21,6 +25,8 @@ export const AdminDashboard: React.FC = () => {
 
   // Homepage Settings State
   const [heroImage, setHeroImage] = useState('');
+  const [aboutHomepageImage, setAboutHomepageImage] = useState('');
+  const [aboutStoryImage, setAboutStoryImage] = useState('');
 
   // Loading States
   const [loadingProducts, setLoadingProducts] = useState(true);
@@ -41,6 +47,10 @@ export const AdminDashboard: React.FC = () => {
   const [deleteType, setDeleteType] = useState<'product' | 'banner' | 'category'>('product');
   const [itemToDelete, setItemToDelete] = useState<{ id: string | number; name: string } | null>(null);
   const [deleteLoading, setDeleteLoading] = useState(false);
+
+  // Category Drag & Drop State
+  const [draggedCatIndex, setDraggedCatIndex] = useState<number | null>(null);
+  const [dragEnabledRowId, setDragEnabledRowId] = useState<string | null>(null);
 
   const navigate = useNavigate();
 
@@ -96,6 +106,7 @@ export const AdminDashboard: React.FC = () => {
       const { data, error } = await supabase
         .from('categories')
         .select('*')
+        .order('priority', { ascending: true })
         .order('name', { ascending: true });
 
       if (error) throw error;
@@ -104,6 +115,53 @@ export const AdminDashboard: React.FC = () => {
       setErrorMsg(err.message || 'Failed to fetch categories list.');
     } finally {
       setLoadingCategories(false);
+    }
+  };
+
+  // --- Category Drag & Drop Handlers ---
+  const handleCatDragStart = (e: React.DragEvent<HTMLTableRowElement>, index: number) => {
+    setDraggedCatIndex(index);
+    e.dataTransfer.effectAllowed = 'move';
+  };
+
+  const handleCatDragOver = (e: React.DragEvent<HTMLTableRowElement>, overIndex: number) => {
+    e.preventDefault();
+    if (draggedCatIndex === null || draggedCatIndex === overIndex) return;
+
+    const updated = [...categoriesList];
+    const [draggedItem] = updated.splice(draggedCatIndex, 1);
+    updated.splice(overIndex, 0, draggedItem);
+    setCategoriesList(updated);
+    setDraggedCatIndex(overIndex);
+  };
+
+  const handleCatDragEnd = async () => {
+    setDraggedCatIndex(null);
+    setDragEnabledRowId(null);
+
+    // Batch update priority values in Supabase
+    try {
+      const updates = categoriesList.map((cat, idx) => ({
+        id: cat.id,
+        name: cat.name,
+        image: cat.image || null,
+        description: cat.description || null,
+        show_on_homepage: cat.show_on_homepage ?? true,
+        priority: idx + 1,
+      }));
+
+      const { error } = await supabase
+        .from('categories')
+        .upsert(updates);
+
+      if (error) throw error;
+
+      // Update local state with new priority values
+      setCategoriesList(prev => prev.map((cat, idx) => ({ ...cat, priority: idx + 1 })));
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to save category ordering.');
+      // Re-fetch to restore correct order
+      fetchCategories();
     }
   };
 
@@ -119,6 +177,14 @@ export const AdminDashboard: React.FC = () => {
       const heroImageSetting = data?.find(item => item.key === 'hero_image');
       if (heroImageSetting) {
         setHeroImage(heroImageSetting.value);
+      }
+      const aboutHomeSetting = data?.find(item => item.key === 'about_homepage_image');
+      if (aboutHomeSetting) {
+        setAboutHomepageImage(aboutHomeSetting.value);
+      }
+      const aboutStorySetting = data?.find(item => item.key === 'about_story_image');
+      if (aboutStorySetting) {
+        setAboutStoryImage(aboutStorySetting.value);
       }
     } catch (err: any) {
       console.error('Failed to load settings:', err);
@@ -150,7 +216,10 @@ export const AdminDashboard: React.FC = () => {
     setDeleteModalOpen(false);
   };
 
-  const handleSettingsImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleSettingsImageUpload = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+    setter: React.Dispatch<React.SetStateAction<string>>
+  ) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
@@ -177,10 +246,10 @@ export const AdminDashboard: React.FC = () => {
         .getPublicUrl(filePath);
 
       if (data?.publicUrl) {
-        setHeroImage(data.publicUrl);
+        setter(data.publicUrl);
       }
     } catch (err: any) {
-      setErrorMsg(err.message || 'An error occurred during hero image upload.');
+      setErrorMsg(err.message || 'An error occurred during image upload.');
     } finally {
       setSettingsImageUploading(false);
       e.target.value = '';
@@ -194,12 +263,18 @@ export const AdminDashboard: React.FC = () => {
     setSuccessMsg(null);
 
     try {
+      const settingsPayload = [
+        { key: 'hero_image', value: heroImage },
+        { key: 'about_homepage_image', value: aboutHomepageImage },
+        { key: 'about_story_image', value: aboutStoryImage }
+      ];
+
       const { error } = await supabase
         .from('homepage_settings')
-        .upsert({ key: 'hero_image', value: heroImage });
+        .upsert(settingsPayload);
 
       if (error) throw error;
-      setSuccessMsg('Homepage hero image settings updated successfully.');
+      setSuccessMsg('Homepage settings updated successfully.');
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to update site settings.');
     } finally {
@@ -303,7 +378,7 @@ export const AdminDashboard: React.FC = () => {
               fontFamily: 'var(--font-body)'
             }}
           >
-            Catalog Inventory
+            Product Inventory
           </button>
           <button
             onClick={() => setActiveTab('banners')}
@@ -364,7 +439,7 @@ export const AdminDashboard: React.FC = () => {
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '1rem', marginBottom: '1.5rem' }}>
               <div>
                 <h2 style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '1.5rem', color: 'var(--text)' }}>
-                  Equipment Inventory
+                  Product Inventory
                 </h2>
                 <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginTop: '0.2rem' }}>
                   Create, update, and manage your kitchen equipment catalog.
@@ -586,6 +661,7 @@ export const AdminDashboard: React.FC = () => {
                 <table className="admin-table">
                   <thead>
                     <tr>
+                      <th style={{ width: '50px' }}></th>
                       <th style={{ width: '80px' }}>Image</th>
                       <th>Category Name</th>
                       <th>System ID</th>
@@ -594,8 +670,22 @@ export const AdminDashboard: React.FC = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {categoriesList.map((cat) => (
-                      <tr key={cat.id}>
+                    {categoriesList.map((cat, index) => (
+                      <tr
+                        key={cat.id}
+                        draggable={dragEnabledRowId === cat.id}
+                        onDragStart={(e) => handleCatDragStart(e, index)}
+                        onDragOver={(e) => handleCatDragOver(e, index)}
+                        onDragEnd={handleCatDragEnd}
+                        className={draggedCatIndex === index ? 'dragging' : ''}
+                      >
+                        <td
+                          className="drag-handle"
+                          title="Drag to reorder"
+                          style={{ cursor: 'grab' }}
+                          onMouseDown={() => setDragEnabledRowId(cat.id)}
+                          onMouseUp={() => setDragEnabledRowId(null)}
+                        >☰</td>
                         <td>
                           {cat.image ? (
                             <img
@@ -651,7 +741,7 @@ export const AdminDashboard: React.FC = () => {
           /* --- Site Settings Tab View --- */
           <div className="admin-card">
             <h2 style={{ fontFamily: 'var(--font-body)', fontWeight: 700, fontSize: '1.5rem', color: 'var(--text)', marginBottom: '1.5rem' }}>
-              Site Settings & Homepage Hero
+              Site Settings & Images
             </h2>
             
             {loadingSettings ? (
@@ -661,7 +751,8 @@ export const AdminDashboard: React.FC = () => {
               </div>
             ) : (
               <form onSubmit={handleSaveSettings}>
-                <div className="admin-form-group">
+                {/* 1. Hero Image */}
+                <div className="admin-form-group" style={{ marginBottom: '2.5rem' }}>
                   <label className="admin-label">Homepage Hero Image *</label>
                   <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '0.8rem' }}>
                     Configure the primary representation image on the main screen of the client website.
@@ -683,7 +774,7 @@ export const AdminDashboard: React.FC = () => {
                         {settingsImageUploading ? (
                           <div style={{ padding: '0.5rem 0' }}>
                             <span className="admin-spinner"></span>
-                            <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Uploading hero image...</p>
+                            <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Uploading...</p>
                           </div>
                         ) : (
                           <div>
@@ -700,7 +791,7 @@ export const AdminDashboard: React.FC = () => {
                         <input
                           type="file"
                           accept="image/*"
-                          onChange={handleSettingsImageUpload}
+                          onChange={(e) => handleSettingsImageUpload(e, setHeroImage)}
                           disabled={savingSettings || settingsImageUploading}
                         />
                       </div>
@@ -715,6 +806,130 @@ export const AdminDashboard: React.FC = () => {
                           style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border)' }}
                           onError={(e) => {
                             e.currentTarget.src = '/images/nsrco-hero.webp';
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Homepage About Us Image */}
+                <div className="admin-form-group" style={{ marginBottom: '2.5rem', borderTop: '1px solid var(--border)', paddingTop: '2rem' }}>
+                  <label className="admin-label">Homepage "About Our Company" Image *</label>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '0.8rem' }}>
+                    Configure the representation image displayed under "About Our Company" section on the homepage.
+                  </p>
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: '280px' }}>
+                      <input
+                        type="text"
+                        className="admin-input"
+                        placeholder="https://... or /images/..."
+                        value={aboutHomepageImage}
+                        onChange={(e) => setAboutHomepageImage(e.target.value)}
+                        required
+                        disabled={savingSettings}
+                        style={{ marginBottom: '1rem' }}
+                      />
+                      
+                      <div className="admin-file-picker">
+                        {settingsImageUploading ? (
+                          <div style={{ padding: '0.5rem 0' }}>
+                            <span className="admin-spinner"></span>
+                            <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Uploading...</p>
+                          </div>
+                        ) : (
+                          <div>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '0.5rem' }}>
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                              <polyline points="17 8 12 3 7 8"></polyline>
+                              <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--text-sub)' }}>
+                              Drag & drop or <span style={{ color: 'var(--orange)', fontWeight: 600 }}>Browse File</span>
+                            </p>
+                          </div>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleSettingsImageUpload(e, setAboutHomepageImage)}
+                          disabled={savingSettings || settingsImageUploading}
+                        />
+                      </div>
+                    </div>
+
+                    {aboutHomepageImage && (
+                      <div style={{ width: '220px', textAlign: 'center' }}>
+                        <label className="admin-label">About Homepage Preview</label>
+                        <img
+                          src={aboutHomepageImage}
+                          alt="About Company preview"
+                          style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border)' }}
+                          onError={(e) => {
+                            e.currentTarget.src = '/images/comapany-image.webp';
+                          }}
+                        />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 3. About Us Page Story Image */}
+                <div className="admin-form-group" style={{ marginBottom: '2.5rem', borderTop: '1px solid var(--border)', paddingTop: '2rem' }}>
+                  <label className="admin-label">About Us Page "Our Story" Image *</label>
+                  <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', marginBottom: '0.8rem' }}>
+                    Configure the image displayed in the detailed "Our Story" section on the public About page.
+                  </p>
+                  <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+                    <div style={{ flex: 1, minWidth: '280px' }}>
+                      <input
+                        type="text"
+                        className="admin-input"
+                        placeholder="https://... or /images/..."
+                        value={aboutStoryImage}
+                        onChange={(e) => setAboutStoryImage(e.target.value)}
+                        required
+                        disabled={savingSettings}
+                        style={{ marginBottom: '1rem' }}
+                      />
+                      
+                      <div className="admin-file-picker">
+                        {settingsImageUploading ? (
+                          <div style={{ padding: '0.5rem 0' }}>
+                            <span className="admin-spinner"></span>
+                            <p style={{ marginTop: '0.5rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>Uploading...</p>
+                          </div>
+                        ) : (
+                          <div>
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginBottom: '0.5rem' }}>
+                              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                              <polyline points="17 8 12 3 7 8"></polyline>
+                              <line x1="12" y1="3" x2="12" y2="15"></line>
+                            </svg>
+                            <p style={{ fontSize: '0.85rem', color: 'var(--text-sub)' }}>
+                              Drag & drop or <span style={{ color: 'var(--orange)', fontWeight: 600 }}>Browse File</span>
+                            </p>
+                          </div>
+                        )}
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={(e) => handleSettingsImageUpload(e, setAboutStoryImage)}
+                          disabled={savingSettings || settingsImageUploading}
+                        />
+                      </div>
+                    </div>
+
+                    {aboutStoryImage && (
+                      <div style={{ width: '220px', textAlign: 'center' }}>
+                        <label className="admin-label">About Story Preview</label>
+                        <img
+                          src={aboutStoryImage}
+                          alt="Our Story preview"
+                          style={{ width: '100%', height: '120px', objectFit: 'cover', borderRadius: '6px', border: '1px solid var(--border)' }}
+                          onError={(e) => {
+                            e.currentTarget.src = '/images/comapany-image-2.webp';
                           }}
                         />
                       </div>

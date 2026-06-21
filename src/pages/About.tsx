@@ -1,7 +1,29 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { StatsCounter } from '../components/StatsCounter';
-
+import { supabase } from '../supabaseClient';
 export const About: React.FC = () => {
+  const [storyImage, setStoryImage] = useState('/images/comapany-image-2.webp');
+
+
+  useEffect(() => {
+    const fetchStoryImage = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('homepage_settings')
+          .select('*')
+          .eq('key', 'about_story_image')
+          .single();
+
+        if (!error && data && data.value) {
+          setStoryImage(data.value);
+        }
+      } catch (err) {
+        console.error('Failed to load story image:', err);
+      }
+    };
+    fetchStoryImage();
+  }, []);
+
   return (
     <main>
       {/* Subpage Banner Header */}
@@ -20,7 +42,7 @@ export const About: React.FC = () => {
         <div className="container">
           <div className="about-grid">
             <div className="about-img-wrap fade-up">
-              <img src="/images/comapany-image-2.webp" alt="NSRCO manufacturing workshop setup" />
+              <img src={storyImage} alt="NSRCO manufacturing workshop setup" />
               <div className="about-img-badge">
                 <div className="num">19+</div>
                 <div className="lbl">Years of<br />Excellence</div>

@@ -72,13 +72,13 @@ export const Navbar: React.FC = () => {
               </NavLink>
             </li>
             <li>
-              <NavLink to="/services" className={({ isActive }) => isActive ? 'active' : ''}>
-                Services
+              <NavLink to="/products" className={({ isActive }) => isActive ? 'active' : ''}>
+                Products
               </NavLink>
             </li>
             <li>
-              <NavLink to="/products" className={({ isActive }) => isActive ? 'active' : ''}>
-                Products
+              <NavLink to="/services" className={({ isActive }) => isActive ? 'active' : ''}>
+                Services
               </NavLink>
             </li>
             <li>
@@ -114,11 +114,11 @@ export const Navbar: React.FC = () => {
         <NavLink to="/" end className={({ isActive }) => `menu-link ${isActive ? 'active' : ''}`}>
           Home
         </NavLink>
-        <NavLink to="/services" className={({ isActive }) => `menu-link ${isActive ? 'active' : ''}`}>
-          Services
-        </NavLink>
         <NavLink to="/products" className={({ isActive }) => `menu-link ${isActive ? 'active' : ''}`}>
           Products
+        </NavLink>
+        <NavLink to="/services" className={({ isActive }) => `menu-link ${isActive ? 'active' : ''}`}>
+          Services
         </NavLink>
         <NavLink to="/about" className={({ isActive }) => `menu-link ${isActive ? 'active' : ''}`}>
           About Us

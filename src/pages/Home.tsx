@@ -8,7 +8,24 @@ export const Home: React.FC = () => {
   const [featuredProducts, setFeaturedProducts] = useState<FeaturedProduct[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [heroImage, setHeroImage] = useState('/images/nsrco-hero.webp');
+  const [aboutImage, setAboutImage] = useState('/images/comapany-image.webp');
   const [loading, setLoading] = useState(true);
+
+  const carouselRef = React.useRef<HTMLDivElement>(null);
+
+  const scrollLeft = () => {
+    if (carouselRef.current) {
+      const cardWidth = carouselRef.current.firstElementChild?.clientWidth || 280;
+      carouselRef.current.scrollBy({ left: -(cardWidth + 32), behavior: 'smooth' }); // card width + gap
+    }
+  };
+
+  const scrollRight = () => {
+    if (carouselRef.current) {
+      const cardWidth = carouselRef.current.firstElementChild?.clientWidth || 280;
+      carouselRef.current.scrollBy({ left: cardWidth + 32, behavior: 'smooth' }); // card width + gap
+    }
+  };
 
   useEffect(() => {
     const fetchHomeData = async () => {
@@ -23,11 +40,12 @@ export const Home: React.FC = () => {
         if (featuredError) throw featuredError;
         setFeaturedProducts(featuredData || []);
 
-        // Fetch categories for homepage browse section
+        // Fetch categories for homepage browse section, ordered by priority
         const { data: categoriesData, error: categoriesError } = await supabase
           .from('categories')
           .select('*')
-          .eq('show_on_homepage', true);
+          .eq('show_on_homepage', true)
+          .order('priority', { ascending: true });
 
         if (!categoriesError && categoriesData) {
           setCategories(categoriesData);
@@ -42,6 +60,10 @@ export const Home: React.FC = () => {
           const heroSetting = settingsData.find(item => item.key === 'hero_image');
           if (heroSetting && heroSetting.value) {
             setHeroImage(heroSetting.value);
+          }
+          const aboutSetting = settingsData.find(item => item.key === 'about_homepage_image');
+          if (aboutSetting && aboutSetting.value) {
+            setAboutImage(aboutSetting.value);
           }
         }
       } catch (err: any) {
@@ -132,7 +154,7 @@ export const Home: React.FC = () => {
         <div className="container">
           <div className="about-grid">
             <div className="about-img-wrap fade-up">
-              <img src="/images/comapany-image.webp" alt="Engineers working on kitchen hardware manufacturing at NSRCO Factory" />
+              <img src={aboutImage} alt="Engineers working on kitchen hardware manufacturing at NSRCO Factory" />
               <div className="about-img-badge">
                 <div className="num">19+</div>
                 <div className="lbl">Years of<br />Excellence</div>
@@ -340,7 +362,7 @@ export const Home: React.FC = () => {
       </section>
 
       {/* Browse by Category Section */}
-      <section id="browse-categories" className="section">
+      <section id="browse-categories" className="section" style={{ paddingTop: '2rem' }}>
         <div className="container">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', marginBottom: '3.5rem' }} className="fade-up">
             <div>
@@ -356,36 +378,49 @@ export const Home: React.FC = () => {
             </div>
           </div>
 
-          <div className="category-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '2rem' }}>
-            {categories.length === 0 ? (
-              <div className="col-12 text-center text-white py-4" style={{ gridColumn: '1 / -1', opacity: 0.7 }}>
-                <p>No categories visible on homepage. Configure categories in the Admin Dashboard.</p>
-              </div>
-            ) : (
-              categories.map(cat => (
-                <Link className="product-card" to={`/products?category=${cat.id}`} key={cat.id}>
-                  <div className="product-card-img" style={{ aspectRatio: '1/1' }}>
-                    <img 
-                      src={cat.image || 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?q=80&w=200&auto=format&fit=crop'} 
-                      alt={cat.name} 
-                      loading="lazy" 
-                    />
-                  </div>
-                  <div className="product-card-body">
-                    <div className="product-card-cat">Category</div>
-                    <div className="product-card-name">{cat.name}</div>
-                    <div className="product-card-desc">
-                      {cat.description || 'Explore our custom engineering hardware.'}
+          <div className="category-carousel-wrapper">
+            {categories.length > 4 && (
+              <button className="carousel-nav-btn carousel-nav-left" onClick={scrollLeft} aria-label="Previous categories">‹</button>
+            )}
+
+            <div 
+              ref={carouselRef}
+              className="category-carousel-viewport"
+            >
+              {categories.length === 0 ? (
+                <div className="col-12 text-center text-white py-4" style={{ gridColumn: '1 / -1', opacity: 0.7 }}>
+                  <p>No categories visible on homepage. Configure categories in the Admin Dashboard.</p>
+                </div>
+              ) : (
+                categories.map(cat => (
+                  <Link className="product-card" to={`/products?category=${cat.id}`} key={cat.id}>
+                    <div className="product-card-img" style={{ aspectRatio: '1/1' }}>
+                      <img 
+                        src={cat.image || 'https://images.unsplash.com/photo-1556910103-1c02745aae4d?q=80&w=200&auto=format&fit=crop'} 
+                        alt={cat.name} 
+                        loading="lazy" 
+                      />
                     </div>
-                  </div>
-                  <div className="product-card-arrow" aria-hidden="true">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <line x1="5" y1="12" x2="19" y2="12"></line>
-                      <polyline points="12 5 19 12 12 19"></polyline>
-                    </svg>
-                  </div>
-                </Link>
-              ))
+                    <div className="product-card-body">
+                      <div className="product-card-cat">Category</div>
+                      <div className="product-card-name">{cat.name}</div>
+                      <div className="product-card-desc">
+                        {cat.description || 'Explore our custom engineering hardware.'}
+                      </div>
+                    </div>
+                    <div className="product-card-arrow" aria-hidden="true">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                        <polyline points="12 5 19 12 12 19"></polyline>
+                      </svg>
+                    </div>
+                  </Link>
+                ))
+              )}
+            </div>
+
+            {categories.length > 4 && (
+              <button className="carousel-nav-btn carousel-nav-right" onClick={scrollRight} aria-label="Next categories">›</button>
             )}
           </div>
         </div>

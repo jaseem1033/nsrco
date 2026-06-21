@@ -4,6 +4,7 @@ export interface Category {
   image?: string;
   description?: string;
   show_on_homepage?: boolean;
+  priority?: number;
 }
 
 export interface FeaturedProduct {

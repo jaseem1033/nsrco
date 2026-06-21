@@ -2319,3 +2319,105 @@ body::before {
     gap: 1rem;
     color: var(--text-sub);
 }
+
+/* Category Carousel Styles */
+.category-carousel-wrapper {
+    position: relative;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.category-carousel-viewport {
+    display: flex;
+    gap: 1.25rem;
+    overflow-x: auto;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE */
+    scroll-behavior: smooth;
+    padding: 0.5rem 0;
+    flex: 1;
+    min-width: 0;
+}
+
+.category-carousel-viewport::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
+}
+
+.category-carousel-viewport .product-card {
+    flex: 0 0 calc((100% - (3 * 1.25rem)) / 4);
+    scroll-snap-align: start;
+    box-sizing: border-box;
+}
+
+/* Compact card styling inside the carousel */
+.category-carousel-viewport .product-card .product-card-body {
+    padding: 0.8rem 1rem;
+}
+.category-carousel-viewport .product-card .product-card-name {
+    font-size: 0.95rem;
+}
+.category-carousel-viewport .product-card .product-card-desc {
+    font-size: 0.78rem;
+    -webkit-line-clamp: 2;
+}
+
+/* Responsive grid widths for slides */
+@media (max-width: 900px) {
+    .category-carousel-viewport .product-card {
+        flex: 0 0 calc((100% - (1 * 1.25rem)) / 2);
+    }
+}
+
+@media (max-width: 600px) {
+    .category-carousel-viewport .product-card {
+        flex: 0 0 100%;
+    }
+    .category-carousel-wrapper {
+        gap: 0.5rem;
+    }
+}
+
+/* Carousel side arrows */
+.carousel-nav-btn {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    border-radius: 50%;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    user-select: none;
+    flex-shrink: 0;
+}
+
+.carousel-nav-btn:hover {
+    background: var(--orange);
+    border-color: var(--orange);
+    color: #fff;
+    box-shadow: 0 4px 16px rgba(232, 80, 10, 0.4);
+}
+
+/* Drag and Drop styling in Admin panel */
+.admin-table tbody tr.dragging {
+    opacity: 0.4;
+    background: rgba(232, 80, 10, 0.05);
+    outline: 1px dashed var(--orange);
+}
+.drag-handle {
+    text-align: center;
+    font-size: 1.2rem;
+    color: var(--text-muted);
+    transition: color 0.2s ease;
+}
+.drag-handle:hover {
+    color: var(--orange);
+}

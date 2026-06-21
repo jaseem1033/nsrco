@@ -143,7 +143,7 @@ export const CategoryForm: React.FC = () => {
         if (error) throw error;
       }
 
-      navigate('/admin');
+      navigate('/admin?tab=categories');
     } catch (err: any) {
       setErrorMsg(err.message || 'An error occurred while saving the category.');
     } finally {
@@ -168,7 +168,7 @@ export const CategoryForm: React.FC = () => {
           NSRCO <span className="admin-badge">{isEditMode ? 'Edit Category' : 'Add Category'}</span>
         </div>
         <div className="admin-nav-links">
-          <Link to="/admin" className="admin-btn admin-btn-secondary" style={{ fontSize: '0.8rem' }}>
+          <Link to="/admin?tab=categories" className="admin-btn admin-btn-secondary" style={{ fontSize: '0.8rem' }}>
             Back to Dashboard
           </Link>
         </div>
@@ -308,7 +308,7 @@ export const CategoryForm: React.FC = () => {
 
           {/* Form Actions */}
           <div style={{ display: 'flex', gap: '1rem', justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: '2rem' }}>
-            <Link to="/admin" className="admin-btn admin-btn-secondary" style={{ minWidth: '100px' }}>
+            <Link to="/admin?tab=categories" className="admin-btn admin-btn-secondary" style={{ minWidth: '100px' }}>
               Cancel
             </Link>
             <button
